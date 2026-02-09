@@ -21,7 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupMenuBar()
         setupHotKey()
         setupGeminiWindow()
-        print("🚀 GeminiToggle is running. Press ⌘⇧/ to toggle Gemini window.")
+        print("🚀 Gemini Desktop is running. Press ⌘⇧/ to toggle Gemini window.")
     }
     
     // MARK: - Menu Bar Setup
@@ -70,7 +70,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         
-        geminiWindow?.title = "Gemini"
+        geminiWindow?.title = "Gemini Desktop"
         geminiWindow?.isReleasedWhenClosed = false
         geminiWindow?.delegate = self
         

@@ -1,4 +1,4 @@
-# GeminiToggle
+# Gemini Desktop
 
 A lightweight macOS menu bar app that lets you toggle Google Gemini with a global hotkey. Gemini runs in an embedded WebView, so there's no Dock icon clutter.
 
@@ -20,8 +20,8 @@ Press `⌘⇧/` and Gemini appears. Press again to hide.
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/gemini-toggle.git
-cd gemini-toggle
+git clone https://github.com/IINemo/gemini-desktop.git
+cd gemini-desktop
 
 # Make build script executable
 chmod +x build.sh
@@ -30,7 +30,7 @@ chmod +x build.sh
 ./build.sh
 
 # Move to Applications
-mv GeminiToggle.app /Applications/
+mv "Gemini Desktop.app" /Applications/
 ```
 
 ### Quick Run (Development)
@@ -46,14 +46,14 @@ swift run
 For the global hotkey to work system-wide:
 
 1. Open **System Settings** → **Privacy & Security** → **Accessibility**
-2. Click **+** and add **GeminiToggle**
+2. Click **+** and add **Gemini Desktop**
 3. Enable the toggle
 
 ### Launch at Login (Optional)
 
 1. Open **System Settings** → **General** → **Login Items**
 2. Click **+** under "Open at Login"
-3. Select **GeminiToggle.app**
+3. Select **Gemini Desktop.app**
 
 ## Usage
 

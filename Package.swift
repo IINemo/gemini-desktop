@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "GeminiToggle",
+    name: "GeminiDesktop",
     platforms: [
         .macOS(.v13)
     ],
@@ -11,7 +11,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "GeminiToggle",
+            name: "GeminiDesktop",
             dependencies: ["HotKey"],
             path: "Sources"
         )
