@@ -4,10 +4,21 @@ import WebKit
 
 // MARK: - App Delegate
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private struct HotKeyConfiguration {
+        let key: Key
+        let modifiers: NSEvent.ModifierFlags
+    }
+
+    private static let defaultToggleHotKey = HotKeyConfiguration(key: .slash, modifiers: [.command, .shift])
+    private static let toggleHotKeyKeyCodeDefaultsKey = "toggleHotKey.keyCode"
+    private static let toggleHotKeyModifiersDefaultsKey = "toggleHotKey.modifiers"
+
     private var statusItem: NSStatusItem!
+    private var toggleMenuItem: NSMenuItem?
     private var hotKey: HotKey?
     private var geminiWindow: NSWindow?
     private var webView: WKWebView?
+    private var toggleHotKey = AppDelegate.defaultToggleHotKey
     
     // Configuration
     private let geminiURL = URL(string: "https://gemini.google.com/app")!
@@ -18,10 +29,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        loadSavedToggleHotKey()
         setupMenuBar()
         setupHotKey()
         setupGeminiWindow()
-        print("🚀 Gemini Desktop is running. Press ⌘⇧/ to toggle Gemini window.")
+        print("🚀 Gemini Desktop is running. Press \(formattedToggleHotKey()) to toggle Gemini window.")
     }
     
     // MARK: - Menu Bar Setup
@@ -34,22 +46,169 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         let menu = NSMenu()
-        
-        menu.addItem(NSMenuItem(title: "Toggle Gemini (⌘⇧/)", action: #selector(toggleGemini), keyEquivalent: ""))
+
+        let toggleItem = NSMenuItem(title: toggleMenuTitle(), action: #selector(toggleGemini), keyEquivalent: "")
+        toggleItem.target = self
+        menu.addItem(toggleItem)
+        toggleMenuItem = toggleItem
+
+        let configureHotKeyItem = NSMenuItem(title: "Set Toggle Hotkey...", action: #selector(configureToggleHotKey), keyEquivalent: "")
+        configureHotKeyItem.target = self
+        menu.addItem(configureHotKeyItem)
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Reload", action: #selector(reloadGemini), keyEquivalent: "r"))
+
+        let reloadItem = NSMenuItem(title: "Reload", action: #selector(reloadGemini), keyEquivalent: "r")
+        reloadItem.target = self
+        menu.addItem(reloadItem)
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
+
+        let quitItem = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
         
         statusItem.menu = menu
     }
     
     // MARK: - HotKey Setup
     private func setupHotKey() {
-        hotKey = HotKey(key: .slash, modifiers: [.command, .shift])
+        hotKey = nil
+        hotKey = HotKey(key: toggleHotKey.key, modifiers: toggleHotKey.modifiers)
         hotKey?.keyDownHandler = { [weak self] in
             self?.toggleGemini()
         }
+    }
+
+    private func formattedToggleHotKey() -> String {
+        KeyCombo(key: toggleHotKey.key, modifiers: toggleHotKey.modifiers).description
+    }
+
+    private func toggleMenuTitle() -> String {
+        "Toggle Gemini (\(formattedToggleHotKey()))"
+    }
+
+    private func updateToggleMenuTitle() {
+        toggleMenuItem?.title = toggleMenuTitle()
+    }
+
+    private func loadSavedToggleHotKey() {
+        let defaults = UserDefaults.standard
+        guard
+            let storedKeyCode = defaults.object(forKey: Self.toggleHotKeyKeyCodeDefaultsKey) as? Int,
+            let storedModifiers = defaults.object(forKey: Self.toggleHotKeyModifiersDefaultsKey) as? Int,
+            let key = Key(carbonKeyCode: UInt32(storedKeyCode))
+        else {
+            return
+        }
+
+        let modifiers = NSEvent.ModifierFlags(carbonFlags: UInt32(storedModifiers))
+        toggleHotKey = HotKeyConfiguration(key: key, modifiers: modifiers)
+    }
+
+    private func saveToggleHotKey() {
+        let defaults = UserDefaults.standard
+        defaults.set(Int(toggleHotKey.key.carbonKeyCode), forKey: Self.toggleHotKeyKeyCodeDefaultsKey)
+        defaults.set(Int(toggleHotKey.modifiers.carbonFlags), forKey: Self.toggleHotKeyModifiersDefaultsKey)
+    }
+
+    private func applyToggleHotKey(_ configuration: HotKeyConfiguration, persist: Bool) {
+        toggleHotKey = configuration
+
+        if persist {
+            saveToggleHotKey()
+        }
+
+        setupHotKey()
+        updateToggleMenuTitle()
+        print("⌨️ Toggle hotkey updated to \(formattedToggleHotKey()).")
+    }
+
+    private func parseHotKeyInput(_ input: String) -> Result<HotKeyConfiguration, String> {
+        let trimmedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedInput.isEmpty else {
+            return .failure("Shortcut cannot be empty.")
+        }
+
+        let normalizedInput = trimmedInput
+            .replacingOccurrences(of: "⌘", with: " cmd ")
+            .replacingOccurrences(of: "⇧", with: " shift ")
+            .replacingOccurrences(of: "⌥", with: " option ")
+            .replacingOccurrences(of: "⌃", with: " control ")
+            .replacingOccurrences(of: "+", with: " ")
+
+        let tokens = normalizedInput
+            .split(whereSeparator: { $0.isWhitespace })
+            .map { String($0).lowercased() }
+
+        guard !tokens.isEmpty else {
+            return .failure("Shortcut cannot be empty.")
+        }
+
+        var modifiers: NSEvent.ModifierFlags = []
+        var key: Key?
+
+        for token in tokens {
+            switch token {
+            case "cmd", "command":
+                modifiers.insert(.command)
+            case "shift":
+                modifiers.insert(.shift)
+            case "opt", "option", "alt":
+                modifiers.insert(.option)
+            case "ctrl", "control", "ctl":
+                modifiers.insert(.control)
+            default:
+                guard let parsedKey = Key(string: token) else {
+                    return .failure("\"\(token)\" is not a supported key. Try values like /, a-z, 0-9, f1, space, or return.")
+                }
+
+                guard key == nil else {
+                    return .failure("Please specify only one non-modifier key.")
+                }
+
+                key = parsedKey
+            }
+        }
+
+        guard let parsedKey = key else {
+            return .failure("Please include a key to trigger the shortcut, for example: cmd+shift+/.")
+        }
+
+        guard !modifiers.isEmpty else {
+            return .failure("Please include at least one modifier key: cmd, option, control, or shift.")
+        }
+
+        return .success(HotKeyConfiguration(key: parsedKey, modifiers: modifiers))
+    }
+
+    private func promptForToggleHotKey(initialValue: String, errorMessage: String?) -> String? {
+        let alert = NSAlert()
+        alert.messageText = "Set Toggle Hotkey"
+
+        var informativeText = """
+        Enter a shortcut like cmd+shift+/ or option+space.
+        You can also type symbol form like ⌘⇧/.
+        Current shortcut: \(formattedToggleHotKey())
+        """
+
+        if let errorMessage {
+            informativeText += "\n\n\(errorMessage)"
+            alert.alertStyle = .warning
+        }
+
+        alert.informativeText = informativeText
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+
+        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        inputField.placeholderString = "cmd+shift+/"
+        inputField.stringValue = initialValue
+        alert.accessoryView = inputField
+
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return nil
+        }
+
+        return inputField.stringValue
     }
     
     // MARK: - Gemini Window Setup
@@ -109,6 +268,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     // MARK: - Menu Actions
+    @objc private func configureToggleHotKey() {
+        var latestInput = ""
+        var validationError: String?
+
+        while true {
+            guard let input = promptForToggleHotKey(initialValue: latestInput, errorMessage: validationError) else {
+                return
+            }
+
+            switch parseHotKeyInput(input) {
+            case .success(let configuration):
+                applyToggleHotKey(configuration, persist: true)
+                return
+            case .failure(let errorMessage):
+                latestInput = input
+                validationError = errorMessage
+            }
+        }
+    }
+
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
     }
