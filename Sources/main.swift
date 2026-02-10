@@ -9,6 +9,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let modifiers: NSEvent.ModifierFlags
     }
 
+    private struct HotKeyParseError: Error {
+        let message: String
+    }
+
     private static let defaultToggleHotKey = HotKeyConfiguration(key: .slash, modifiers: [.command, .shift])
     private static let toggleHotKeyKeyCodeDefaultsKey = "toggleHotKey.keyCode"
     private static let toggleHotKeyModifiersDefaultsKey = "toggleHotKey.modifiers"
@@ -122,10 +126,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("⌨️ Toggle hotkey updated to \(formattedToggleHotKey()).")
     }
 
-    private func parseHotKeyInput(_ input: String) -> Result<HotKeyConfiguration, String> {
+    private func parseHotKeyInput(_ input: String) -> Result<HotKeyConfiguration, HotKeyParseError> {
         let trimmedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedInput.isEmpty else {
-            return .failure("Shortcut cannot be empty.")
+            return .failure(HotKeyParseError(message: "Shortcut cannot be empty."))
         }
 
         let normalizedInput = trimmedInput
@@ -140,7 +144,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .map { String($0).lowercased() }
 
         guard !tokens.isEmpty else {
-            return .failure("Shortcut cannot be empty.")
+            return .failure(HotKeyParseError(message: "Shortcut cannot be empty."))
         }
 
         var modifiers: NSEvent.ModifierFlags = []
@@ -158,11 +162,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 modifiers.insert(.control)
             default:
                 guard let parsedKey = Key(string: token) else {
-                    return .failure("\"\(token)\" is not a supported key. Try values like /, a-z, 0-9, f1, space, or return.")
+                    return .failure(HotKeyParseError(message: "\"\(token)\" is not a supported key. Try values like /, a-z, 0-9, f1, space, or return."))
                 }
 
                 guard key == nil else {
-                    return .failure("Please specify only one non-modifier key.")
+                    return .failure(HotKeyParseError(message: "Please specify only one non-modifier key."))
                 }
 
                 key = parsedKey
@@ -170,11 +174,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         guard let parsedKey = key else {
-            return .failure("Please include a key to trigger the shortcut, for example: cmd+shift+/.")
+            return .failure(HotKeyParseError(message: "Please include a key to trigger the shortcut, for example: cmd+shift+/."))
         }
 
         guard !modifiers.isEmpty else {
-            return .failure("Please include at least one modifier key: cmd, option, control, or shift.")
+            return .failure(HotKeyParseError(message: "Please include at least one modifier key: cmd, option, control, or shift."))
         }
 
         return .success(HotKeyConfiguration(key: parsedKey, modifiers: modifiers))
@@ -235,7 +239,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Create WebView with configuration
         let config = WKWebViewConfiguration()
-        config.preferences.javaScriptEnabled = true
+        config.defaultWebpagePreferences.allowsContentJavaScript = true
         
         // Enable developer tools for debugging (optional)
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
@@ -281,9 +285,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             case .success(let configuration):
                 applyToggleHotKey(configuration, persist: true)
                 return
-            case .failure(let errorMessage):
+            case .failure(let error):
                 latestInput = input
-                validationError = errorMessage
+                validationError = error.message
             }
         }
     }
