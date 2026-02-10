@@ -4,7 +4,8 @@ A lightweight macOS menu bar app that lets you toggle Google Gemini with a globa
 
 ## Features
 
-- **Global Hotkey**: Press `⌘⇧/` (Command + Shift + /) to toggle Gemini
+- **Global Hotkey**: Toggle Gemini with a configurable shortcut (default: `⌘⇧/`)
+- **Tray Hotkey Config**: Change the toggle shortcut directly from the menu bar
 - **Menu Bar App**: Runs quietly in your menu bar with a sparkles icon
 - **No Dock Icon**: The app and Gemini window are completely hidden from the Dock
 - **Native WebView**: Gemini runs embedded in the app - no separate browser needed
@@ -59,7 +60,8 @@ For the global hotkey to work system-wide:
 
 | Action | Result |
 |--------|--------|
-| `⌘⇧/` | Toggle Gemini window visibility |
+| Configured toggle shortcut (default: `⌘⇧/`) | Toggle Gemini window visibility |
+| Menu bar icon → Set Toggle Hotkey... | Change and save the global shortcut |
 | Menu bar icon → Reload | Refresh the Gemini page |
 | Menu bar icon → Quit | Exit the app |
 
@@ -67,15 +69,14 @@ For the global hotkey to work system-wide:
 
 ### Change the Hotkey
 
-Edit `Sources/main.swift` and modify the `setupHotKey()` function:
+You can change the hotkey directly from the tray menu:
 
-```swift
-// Example: Change to ⌘⌥G
-hotKey = HotKey(key: .g, modifiers: [.command, .option])
-```
+1. Click the Gemini menu bar icon
+2. Select **Set Toggle Hotkey...**
+3. Enter a shortcut (examples: `cmd+shift+/`, `option+space`, `⌘⇧/`)
+4. Click **Save**
 
-Available keys: `.space`, `.a` through `.z`, `.f1` through `.f12`, `.slash`, etc.
-Available modifiers: `.command`, `.option`, `.control`, `.shift`
+The new shortcut is applied immediately and saved for the next launch.
 
 ### Change Window Size
 
