@@ -34,10 +34,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         loadSavedToggleHotKey()
+        setupMainMenu()
         setupMenuBar()
         setupHotKey()
         setupGeminiWindow()
         print("🚀 Gemini Desktop is running. Press \(formattedToggleHotKey()) to toggle Gemini window.")
+    }
+    
+    // MARK: - Main Menu (Edit key equivalents for WebView)
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+        
+        // Application menu
+        let appMenuItem = NSMenuItem()
+        mainMenu.addItem(appMenuItem)
+        let appMenu = NSMenu()
+        appMenuItem.submenu = appMenu
+        appMenu.addItem(NSMenuItem(title: "Quit Gemini Desktop", action: #selector(quit), keyEquivalent: "q"))
+        
+        // Edit menu — so Cmd+A, Cmd+C, Cmd+V, Cmd+X reach the WebView first responder
+        let editMenuItem = NSMenuItem()
+        mainMenu.addItem(editMenuItem)
+        let editMenu = NSMenu(title: "Edit")
+        editMenuItem.submenu = editMenu
+        editMenu.addItem(NSMenuItem(title: "Cut", action: Selector("cut:"), keyEquivalent: "x"))
+        editMenu.addItem(NSMenuItem(title: "Copy", action: Selector("copy:"), keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: "Paste", action: Selector("paste:"), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem(title: "Select All", action: Selector("selectAll:"), keyEquivalent: "a"))
+        
+        NSApp.mainMenu = mainMenu
     }
     
     // MARK: - Menu Bar Setup
