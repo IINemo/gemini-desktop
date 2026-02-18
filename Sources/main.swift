@@ -2,6 +2,15 @@ import AppKit
 import HotKey
 import WebKit
 
+// MARK: - Custom Window (Escape key support)
+class GeminiWindow: NSWindow {
+    var onEscapePressed: (() -> Void)?
+    
+    override func cancelOperation(_ sender: Any?) {
+        onEscapePressed?()
+    }
+}
+
 // MARK: - App Delegate
 class AppDelegate: NSObject, NSApplicationDelegate {
     private struct HotKeyConfiguration {
@@ -20,7 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var toggleMenuItem: NSMenuItem?
     private var hotKey: HotKey?
-    private var geminiWindow: NSWindow?
+    private var geminiWindow: GeminiWindow?
     private var webView: WKWebView?
     private var toggleHotKey = AppDelegate.defaultToggleHotKey
     
@@ -251,7 +260,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         let windowRect = NSRect(x: windowX, y: windowY, width: windowWidth, height: windowHeight)
         
-        geminiWindow = NSWindow(
+        geminiWindow = GeminiWindow(
             contentRect: windowRect,
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
@@ -261,6 +270,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         geminiWindow?.title = "Gemini Desktop"
         geminiWindow?.isReleasedWhenClosed = false
         geminiWindow?.delegate = self
+        
+        geminiWindow?.onEscapePressed = { [weak self] in
+            self?.geminiWindow?.orderOut(nil)
+        }
         
         // Create WebView with configuration
         let config = WKWebViewConfiguration()
